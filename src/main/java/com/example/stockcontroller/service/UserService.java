@@ -2,17 +2,28 @@ package com.example.stockcontroller.service;
 
 import com.example.stockcontroller.config.FileImageService;
 import com.example.stockcontroller.dto.User.UserRequest;
+import com.example.stockcontroller.dto.User.UserResponse;
 import com.example.stockcontroller.exception.MyResourceNotFoundException;
 import com.example.stockcontroller.model.Gender;
 import com.example.stockcontroller.model.Role;
 import com.example.stockcontroller.model.User;
 import com.example.stockcontroller.repository.RoleRepository;
 import com.example.stockcontroller.repository.UserRepository;
+import com.example.stockcontroller.util.JwtUtil;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -27,6 +38,8 @@ public class UserService {
     private FileImageService fileImageService;
     @Autowired
     private RoleRepository roleRepository;
+
+
 
     public Page<User> getAllUsers(String search, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -54,7 +67,7 @@ public class UserService {
         user.setGender(request.getGender());
         user.setTel(request.getTel());
         user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
+        user.setPassword(new BCryptPasswordEncoder().encode(request.getPassword()));
         user.setAddress(request.getAddress());
         user.setDob(request.getDob());
         user.setImage(profileName);
@@ -87,7 +100,7 @@ public class UserService {
         findUser.setGender(request.getGender());
         findUser.setTel(request.getTel());
         findUser.setEmail(request.getEmail());
-        findUser.setPassword(request.getPassword());
+        findUser.setPassword(new BCryptPasswordEncoder().encode(request.getPassword()));
         findUser.setAddress(request.getAddress());
         findUser.setDob(request.getDob());
         findUser.setRole(role);
@@ -103,4 +116,10 @@ public class UserService {
         userRepository.deleteById(id);
         return findUser;
     }
+
+
+   public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new MyResourceNotFoundException("User not found with email " + email));
+   }
 }

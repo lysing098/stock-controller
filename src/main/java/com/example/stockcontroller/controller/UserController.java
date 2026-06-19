@@ -2,18 +2,25 @@ package com.example.stockcontroller.controller;
 
 import com.example.stockcontroller.dto.PaginateResponse;
 import com.example.stockcontroller.dto.User.UserRequest;
+import com.example.stockcontroller.dto.User.UserResponse;
 import com.example.stockcontroller.model.Role;
 import com.example.stockcontroller.model.User;
 import com.example.stockcontroller.repository.RoleRepository;
+import com.example.stockcontroller.service.CustomUserDetailsService;
 import com.example.stockcontroller.service.UserService;
+import com.example.stockcontroller.util.JwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @RestController
@@ -25,6 +32,15 @@ public class UserController {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @GetMapping
     public ResponseEntity<?> getAllUsers(
@@ -95,5 +111,36 @@ public class UserController {
         response.put("user", user);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> createAuthToken(@RequestBody UserRequest userRequest) throws IOException {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(userRequest.getEmail(), userRequest.getPassword())
+        );
+
+        final UserDetails userDetails = customUserDetailsService.loadUserByUsername(userRequest.getEmail());
+
+        final String jwt = jwtUtil.generateToken(userDetails);
+
+        String gender = (userRequest.getGender() != null)
+                ? userRequest.getGender().name()
+                : null;
+
+        User user = userService.findByEmail(userRequest.getEmail());
+
+        UserResponse userResponse = new UserResponse(
+                user.getFirstName(),
+                user.getLastName(),
+                user.getUserName(),
+                user.getGender() != null ? user.getGender().name() : null,
+                user.getTel(),
+                user.getEmail(),
+                user.getAddress(),
+                user.getDob() != null ? user.getDob().toString() : null,
+                user.getRole().getId()
+        );
+
+        return ResponseEntity.ok(new UserResponse(jwt, userResponse));
     }
 }
